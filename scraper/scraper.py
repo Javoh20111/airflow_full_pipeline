@@ -9,10 +9,10 @@ Pipeline:
   5. Append new rows to CSV — never overwrite existing data
  
 Run manually (all pages):
-    python scraper.py
+    python3 scraper/scraper.py
  
 Test run — 1 page only:
-    python scraper.py --pages 1
+    python3 scraper/scraper.py --pages 1
 
 Scheduling:
     Run this script from Airflow or cron. Each invocation performs one scrape
@@ -935,6 +935,14 @@ class OLXScraper:
  
         log.info(f"===== Scrape finished — {total_new} new listings =====")
         return total_new
+
+
+    def run_scraper(max_pages=MAX_PAGES, max_listings=None):
+        scraper = OLXScraper()
+        return scraper.run(
+            max_pages=max_pages,
+            max_listings=max_listings,
+        )
  
  
 # ---------------------------------------------------------------------------
