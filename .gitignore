@@ -1,0 +1,14 @@
+.venv/
+logs/
+__pycache__/
+*.pyc
+
+airflow.db
+airflow.cfg
+simple_auth_manager_passwords.json.generated
+
+data/raw/*
+data/prepared/*
+
+.DS_Store
+.env
