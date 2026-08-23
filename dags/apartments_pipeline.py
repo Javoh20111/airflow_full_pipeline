@@ -1,5 +1,8 @@
 # Purpose: Defines an Airflow DAG that schedules a daily web scraping task for apartment listings using the custom OLXScraper module.
 import sys
+import pandas as pd
+import logging
+from sqlalchemy import create_engine, text
 from pathlib import Path
 from airflow import DAG
 from airflow.decorators import task
@@ -9,16 +12,79 @@ from datetime import datetime
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+CSV_PATH = "/Users/javohireshonov/Desktop/Study/Projects/airflow_full_pipeline/data/raw/olx_apartments.csv"
+
+log = logging.getLogger(__name__)
+
 from scraper.scraper import OLXScraper
 from scraper.config import MAX_PAGES
 
+
+## ===============================================================================
+##                       Scrape data
+## ===============================================================================
 @task(task_id="scrape_data")
-def run(max_pages=MAX_PAGES, max_listings=10):
+def run(max_pages=MAX_PAGES, max_listings=2):
+
+    start_time = datetime.now()
+
+    log.info("Started scraping data")
     scraper = OLXScraper()
-    return scraper.run(
+
+    new_listings = scraper.run(
         max_pages=max_pages,
         max_listings=max_listings,
     )
+
+    end_time = datetime.now()
+    duration = end_time - start_time
+
+    log.info(f"""
+    Scraping completed
+    ------------------
+    Pages: {max_pages}
+    Listing limit: {max_listings}
+    New listings: {new_listings}
+    Duration: {duration}
+    """)
+
+    return new_listings
+
+
+## ===============================================================================
+##                       Load Data
+## ===============================================================================
+engine = create_engine(
+    "postgresql+psycopg://postgres:8228@localhost:5432/airflow_apartments_db"
+)
+@task(task_id="Load_bronze")
+def load_bronze():
+    start_time = datetime.now()
+    log.info("Starting Bronze load")
+
+    with engine.begin() as conn:
+
+        log.info("Truncating Bronze table")
+        conn.execute(
+            text("TRUNCATE TABLE bronze.airflow_apartments_tb")
+        )
+
+        # -------------------------
+        # Load into PostgreSQL
+        # -------------------------
+
+        log.info("Loading data into Bronze")
+
+
+
+
+    end_time = datetime.now()
+    duration = end_time - start_time
+
+    log.info(f"Bronze load completed in {duration}")
+
+
+
 
 with DAG(
     dag_id="Apartment_pipeline",
@@ -28,3 +94,7 @@ with DAG(
 ) as dag:
 
     scrape = run()
+    bronze = load_bronze()
+
+    scrape >> bronze
+

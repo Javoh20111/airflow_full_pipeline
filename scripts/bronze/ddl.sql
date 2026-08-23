@@ -1,48 +1,42 @@
-/*
-===================================================================
-Bronze Layer: OLX Apartments Listings (Raw)
-===================================================================
-Purpose:
-    Stores raw apartment listing data scraped from OLX, preserved in
-    its original form to serve as the single source of truth for
-    downstream silver/gold transformations. No cleaning, deduplication,
-    or derived recalculation is performed at this layer.
-===================================================================
-*/
-
-/* 
-listing_id,source,seller_type,housing_type,region,district,rooms,living_area_m2,kitchen_area_m2,total_area_m2,floor,total_floors,building_type,layout,build_year,ceiling_height,bathroom,furnished,renovation,commission,amenities,nearby,negotiable,price,currency,published_date,description,date_scraped,url
- */
-
+DROP TABLE IF EXISTS bronze.airflow_apartments_tb;
 
 CREATE TABLE bronze.airflow_apartments_tb (
-    listing_id TEXT PRIMARY KEY,
-    source VARCHAR(15),
-    seller_type VARCHAR(15),
-    housing_type VARCHAR(15),
-    region TEXT,
-    district  TEXT,
-    rooms INTEGER,
+    listing_id VARCHAR(64),
+    source VARCHAR(100),
+    seller_type VARCHAR(50),
+    housing_type VARCHAR(50),
+    region VARCHAR(100),
+    district VARCHAR(100),
+    rooms NUMERIC,
+    -- float64 in source
     living_area_m2 NUMERIC,
-    kitchen_area_m NUMERIC,
+    kitchen_area_m2 NUMERIC,
     total_area_m2 NUMERIC,
-    floor INTEGER,
-    total_floors INTEGER,
-    building_type TEXT,
-    layout TEXT,
-    build_year INTEGER,
+    floor NUMERIC,
+    -- float64 in source
+    total_floors NUMERIC,
+    -- float64 in source
+    building_type VARCHAR(100),
+    layout VARCHAR(100),
+    build_year NUMERIC,
+    -- float64 in source
     ceiling_height NUMERIC,
-    bathroom  VARCHAR(20),
-    furnished BOOLEAN,
-    renovation TEXT,
-    commission BOOLEAN,
+    bathroom VARCHAR(50),
+    furnished NUMERIC,
+    -- float64 in source, DO NOT bool-cast in Python
+    renovation VARCHAR(100),
+    commission NUMERIC,
     amenities TEXT,
+    -- comma-separated string, not JSON
     nearby TEXT,
-    negotiable BOOLEAN,
-    price NUMERIC NOT NULL,
-    currency VARCHAR(15),
-    published_date DATE,
+    -- comma-separated string, not JSON
+    negotiable NUMERIC,
+    -- int64 in source, DO NOT bool-cast in Python
+    price NUMERIC,
+    currency VARCHAR(10),
+    published_date VARCHAR(20),
+    -- raw string "DD/MM/YYYY", parse in silver
     description TEXT,
-    date_scraped DATE,
+    date_scraped VARCHAR(20),
     url TEXT
-)
+);
