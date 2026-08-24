@@ -73,9 +73,14 @@ def load_bronze():
         # Load into PostgreSQL
         # -------------------------
 
+
         log.info("Loading data into Bronze")
-
-
+        raw_conn = conn.connection
+        cursor = raw_conn.cursor()
+        with open(CSV_PATH, "r", encoding="utf-8") as f:
+            with raw_conn.cursor() as cur:
+                with cur.copy("COPY bronze.airflow_apartments_tb FROM STDIN WITH (FORMAT CSV, HEADER)") as copy:
+                    copy.write(f.read())
 
 
     end_time = datetime.now()
@@ -96,5 +101,5 @@ with DAG(
     scrape = run()
     bronze = load_bronze()
 
-    scrape >> bronze
+    scrape >> bronze 
 
