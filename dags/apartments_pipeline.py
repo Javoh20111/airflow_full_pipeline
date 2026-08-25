@@ -18,6 +18,7 @@ log = logging.getLogger(__name__)
 
 from scraper.scraper import OLXScraper
 from scraper.config import MAX_PAGES
+from transformations.orchestrator import main
 
 
 ## ===============================================================================
