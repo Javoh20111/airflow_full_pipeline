@@ -21,7 +21,7 @@ CREATE TABLE bronze.airflow_apartments_tb (
     build_year NUMERIC,
     -- float64 in source
     ceiling_height NUMERIC,
-    bathroom VARCHAR(50),
+    bathroom TEXT,
     furnished NUMERIC,
     -- float64 in source, DO NOT bool-cast in Python
     renovation VARCHAR(100),

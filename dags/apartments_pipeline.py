@@ -93,6 +93,20 @@ def load_bronze():
 ##                       Test bronze layer
 ## ===============================================================================
 
+@task(task_id = "bronze_quality_check")
+def bronze_quality_check():
+    log.info("Starting Bronze quality check")
+
+    # Note: Stored procedure already created and stored in "../tests/bronze/check_data_load.sql"
+    with engine.begin() as conn:
+        conn.execute(text("""CALL bronze.check_load();"""))
+    log.info("Bronze quality check passed")
+
+
+## ===============================================================================
+##                       TRANSFORM
+## ===============================================================================
+
 
 
 with DAG(
@@ -104,6 +118,7 @@ with DAG(
 
     scrape = run()
     bronze = load_bronze()
+    bronze_quality_check = bronza_quality_check()
 
-    scrape >> bronze 
+    scrape >> bronze >> bronze_quality_check
 
