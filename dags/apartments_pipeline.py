@@ -118,7 +118,7 @@ with DAG(
 
     scrape = run()
     bronze = load_bronze()
-    bronze_quality_check = bronza_quality_check()
+    bronze_quality_check = bronze_quality_check()
 
     scrape >> bronze >> bronze_quality_check
 
