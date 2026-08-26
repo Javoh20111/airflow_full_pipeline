@@ -1,6 +1,7 @@
 import logging
 import pandas as pd
 import numpy as np
+from datetime import datetime
 import re
 
 
@@ -15,6 +16,7 @@ logging.basicConfig(
 # =====================================================================================
 def drop_duplicate(df_cleaned):
     log.info("Removing duplicates")
+    start_time = datetime.now()
     before = len(df_cleaned)
 
     df_cleaned = df_cleaned.drop_duplicates(subset=['listing_id'])
@@ -24,6 +26,8 @@ def drop_duplicate(df_cleaned):
         Dataset size: {before}
         Duplicates: {before - after}
     """)
+    end_time = datetime.now()
+    log.info(f"Time spent: {before - after}")
     return df_cleaned
 
 
@@ -277,7 +281,7 @@ def clean_district(df_cleaned):
 
 
 # =====================================================================================
-#                   Clean housing_type column
+#                   Clean total_area_m2 column
 # =====================================================================================
 
 def clean_total_area_m2(df_cleaned):
@@ -306,12 +310,12 @@ def clean_total_area_m2(df_cleaned):
 # =====================================================================================
 
 def clean_floor(df_cleaned):
-    log.info("Cleaning total_area_m2 column")
+    log.info("Cleaning floor&total_floor column")
     before = len(df_cleaned)
 
     df_cleaned = df_cleaned[df_cleaned['total_floors'] < 100]
 
-    log.info(f"total_area_m2 validation: {before} -> {len(df_cleaned)} ")
+    log.info(f"floor&total_floor validation: {before} -> {len(df_cleaned)} ")
     return df_cleaned
 
 
@@ -320,7 +324,7 @@ def clean_floor(df_cleaned):
 # =====================================================================================
 
 def clean_building_type(df_cleaned):
-    log.info("Cleaning total_area_m2 column")
+    log.info("Cleaning building_type column")
     def clean_building(value):
         if pd.isna(value):
             return np.nan
@@ -347,7 +351,324 @@ def clean_building_type(df_cleaned):
 
         return np.nan
 
-    df_cleaned["building_type"] = df_cleaned["building_type"].apply(clean_building_type)
+    df_cleaned["building_type"] = df_cleaned["building_type"].apply(clean_building)
+
     return df_cleaned
 
 
+# =====================================================================================
+#                   Clean clean_layout column
+# =====================================================================================
+def clean_layout(df_cleaned):
+    log.info("Cleaning clean_layout column")
+    def clean_layout(value):
+        if pd.isna(value):
+            return np.nan
+
+        value = str(value).lower().strip()
+
+        if value in ["-", ""]:
+            return np.nan
+
+        if "css" in value:
+            return np.nan
+
+        if "studio" in value or "студ" in value:
+            return "studio"
+
+        if "free layout" in value or "свобод" in value:
+            return "free_layout"
+
+        if "пентхаус" in value or "penthouse" in value:
+            return "penthouse"
+
+        if "многоуров" in value:
+            return "multi_level"
+
+        if "малосем" in value:
+            return "small_family"
+
+        if (
+            "смежно" in value
+            or "см-раз" in value
+            or "см раз" in value
+            or "сможно" in value
+        ):
+            return "adjacent_separate"
+
+        if "смеж" in value:
+            return "adjacent"
+
+        if (
+            "раздел" in value
+            or "раздель" in value
+            or "алоҳида" in value
+            or "alohida" in value
+            or value == "separate"
+        ):
+            return "separate"
+
+        if "adjacent" in value:
+            return "adjacent"
+
+        return np.nan
+
+    df_cleaned["layout"] = df_cleaned["layout"].apply(clean_layout)
+    return df_cleaned
+
+# =====================================================================================
+#                   Clean built_year and create age column
+# =====================================================================================
+
+def clean_built_year(df_cleaned):
+    log.info("Cleaning built_year column")
+    current_year = datetime.now().year
+
+    df_cleaned["build_year"] = pd.to_numeric(df_cleaned["build_year"], errors="coerce")
+
+    df_cleaned["age"] = current_year - df_cleaned['build_year']
+
+    df_cleaned.loc[
+        (df_cleaned["build_year"] < 1900) |
+        (df_cleaned["build_year"] > current_year),
+        "age"
+    ] = np.nan
+
+    return df_cleaned
+
+
+# =====================================================================================
+#                   Clean bathroom column
+# =====================================================================================
+
+def clean_bathroom_column(df_cleaned):
+    log.info("Cleaning bathroom_column column")
+    def clean_bathroom(value):
+        if pd.isna(value):
+            return np.nan
+
+        value = str(value).lower().strip().replace(".", "")
+
+        if value in ["", "-", "css"]:
+            return np.nan
+
+        if "css" in value:
+            return np.nan
+
+        if (
+            value in ["2", "3", "4", "2 та"]
+            or "2+" in value
+            or "2 сан" in value
+            or "2 та" in value
+            or "3 сан" in value
+            or "4 сан" in value
+        ):
+            return "2+ bathrooms"
+
+        if (
+            "separate" in value
+            or "раздель" in value
+            or "раздел" in value
+            or "алоҳида" in value
+            or "alohida" in value
+        ):
+            return "separate"
+
+        if (
+            "combined" in value
+            or "совмещ" in value
+            or "совмеш" in value
+            or "совмещение" in value
+        ):
+            return "combined"
+
+        return np.nan
+
+
+    df_cleaned["bathroom"] = df_cleaned["bathroom"].apply(clean_bathroom)
+    return df_cleaned
+
+
+
+# =====================================================================================
+#                   Clean renovation column
+# =====================================================================================
+def clean_renovation_column(df_cleaned):
+    log.info("Cleaning renovation column")
+    def clean_renovation(value):
+        if pd.isna(value):
+            return np.nan
+
+        value = str(value).lower().strip()
+
+        if value in ["", "-"]:
+            return np.nan
+
+        if "css" in value:
+            return np.nan
+        
+        if value in ["йок", "йўқ", "yo'q", "yoq", "yuq", "yo‘q", "нет", "none", "no"]:
+            return "needs_renovation"
+
+        # No / needs renovation
+        if (
+            "без ремонта" in value
+            or "требуется ремонт" in value
+            or "needs renovation" in value
+            or "ремонт керак" in value
+        ):
+            return "needs_renovation"
+
+        # Shell/core / unfinished
+        if (
+            "shell" in value
+            or "core" in value
+            or "коробка" in value
+            or "чернов" in value
+        ):
+            return "shell_and_core"
+
+        # Pre-finished / white box
+        if (
+            "pre-finished" in value
+            or "white box" in value
+            or "предчист" in value
+        ):
+            return "pre_finished"
+
+        # Designer / author renovation
+        if (
+            "designer" in value
+            or "дизайнер" in value
+            or "авторск" in value
+            or "haytec" in value
+        ):
+            return "designer_renovation"
+
+        # Euro / luxury / modern renovation
+        if (
+            "euro" in value
+            or "евро" in value
+            or "люкс" in value
+            or "lux" in value
+            or "современ" in value
+            or "комфорт" in value
+        ):
+            return "euro_renovation"
+
+        # Average / good condition
+        if (
+            "average" in value
+            or "сред" in value
+            or "хорош" in value
+            or "яхши" in value
+            or "чистый" in value
+            or "космет" in value
+            or "как на фото" in value
+            or "с ремонтом" in value
+            or value == "есть"
+        ):
+            return "average_condition"
+
+        return np.nan
+    df_cleaned["renovation"] = df_cleaned["renovation"].apply(clean_renovation)
+    log.info(f"Sample renovation: {df_cleaned.groupby('renovation')['listing_id'].count()}")
+    return df_cleaned
+
+
+# =====================================================================================
+#                   Clean amenities column
+# =====================================================================================
+def clean_amenities_and_nearby_column(df_cleaned):
+    log.info("Cleaning amenities and nearby column")
+    VALID_NEARBY = {
+        "Hospital", "Clinic", "Playground", "Kindergarten", "Bus Stop",
+        "Park", "Green Area", "Entertainment", "Restaurant", "Cafe",
+        "Parking", "Supermarket", "Shops", "School", "Metro",
+    }
+
+    NEARBY_ALIASES = {
+        "метро": "Metro",
+        "metro": "Metro",
+    }
+
+    def clean_multi_value_items(value, valid_items=None):
+        if pd.isna(value):
+            return ""
+
+        items = [item.strip() for item in str(value).split(",")]
+        items = [NEARBY_ALIASES.get(item.lower(), item) for item in items]
+
+        if valid_items is not None:
+            items = [item for item in items if item in valid_items]
+
+        return ", ".join(items)
+
+
+    def create_boolean_columns(df, column_name, prefix, valid_items=None):
+        old_dummy_cols = [col for col in df.columns if col.startswith(f"{prefix}_")]
+        df = df.drop(columns=old_dummy_cols, errors="ignore")
+
+        cleaned_values = df[column_name].apply(
+            lambda value: clean_multi_value_items(value, valid_items)
+        )
+
+        dummies = cleaned_values.str.get_dummies(sep=", ")
+
+        dummies.columns = [
+            f"{prefix}_{col.lower().strip().replace(' ', '_')}"
+            for col in dummies.columns
+        ]
+
+        return pd.concat([df, dummies], axis=1)
+    df_cleaned = create_boolean_columns(df_cleaned, "amenities", "amenity")
+    df_cleaned = create_boolean_columns(df_cleaned, "nearby", "nearby", VALID_NEARBY)
+    log.info(f"Final remaining rows count: {len(df_cleaned)}")
+    return df_cleaned
+
+
+# =====================================================================================
+#                   Add near_metro_mentioned column
+# =====================================================================================
+def add_near_metro_mentioned(df_cleaned):
+    log.info("Added new column near_metro_mentioned")
+    metro_pattern = r"metro|метро"
+
+    df_cleaned["near_metro_mentioned"] = (
+        df_cleaned["description"].fillna("").str.contains(metro_pattern, case = False, regex = True) 
+        |
+        df_cleaned["url"].fillna("").str.contains(metro_pattern, case = False, regex = True)
+    ).astype(int).astype(bool)
+    return df_cleaned
+
+
+
+
+# =====================================================================================
+#                   Clean amenities column
+# =====================================================================================
+def remove_unnecesary_columns_and_fix_data_types(df_cleaned):
+    log.info("Removing unnecessary columns and fixing data types")
+    keep_columns = [
+        "listing_id", "price_usd", "price_per_sqr", "listing_type",
+        "commission", "negotiable", "published_date", "date_scraped", "url",
+        "description", "housing_type", "rooms", "total_area_m2", "floor",
+        "total_floors", "building_type", "layout", "build_year", "age",
+        "ceiling_height", "bathroom", "furnished", "renovation",
+        "seller_type", "region", "district", "amenity_air_conditioning", "amenity_balcony", "amenity_cable_tv","amenity_internet", "amenity_kitchen","amenity_refrigerator","amenity_tv",
+        "amenity_telephone", "amenity_washing_machine","nearby_bus_stop", "nearby_cafe", "nearby_clinic","nearby_entertainment", "nearby_green_area", "nearby_hospital", "nearby_kindergarten", "nearby_park", "nearby_parking", "nearby_playground", "nearby_restaurant", "nearby_school", "nearby_shops", "nearby_supermarket", "near_metro_mentioned",
+    ]
+
+    df_cleaned = df_cleaned[keep_columns].copy()
+
+    df_cleaned["commission"] = df_cleaned["commission"].fillna(0).astype(int).astype(bool)
+    df_cleaned["negotiable"] = df_cleaned["negotiable"].fillna(0).astype(int).astype(bool)
+    df_cleaned["furnished"] = df_cleaned["furnished"].fillna(0).astype(int).astype(bool)
+    df_cleaned["floor"] = df_cleaned["floor"].astype("Int64")
+    df_cleaned["total_floors"] = df_cleaned["total_floors"].astype("Int64")
+    df_cleaned["rooms"] = df_cleaned["rooms"].astype("Int64")
+    df_cleaned["age"] = df_cleaned["age"].astype("Int64")
+    df_cleaned["build_year"] = df_cleaned["build_year"].astype("Int64")
+    df_cleaned["published_date"] = pd.to_datetime(
+    df_cleaned["published_date"], format="%d/%m/%Y", errors="coerce").dt.date
+    return df_cleaned

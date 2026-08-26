@@ -25,7 +25,7 @@ from transformations.orchestrator import main
 ##                       Scrape data
 ## ===============================================================================
 @task(task_id="scrape_data")
-def run(max_pages=MAX_PAGES, max_listings=2):
+def run(max_pages=MAX_PAGES, max_listings=10):
 
     start_time = datetime.now()
 
@@ -108,6 +108,14 @@ def bronze_quality_check():
 ##                       TRANSFORM
 ## ===============================================================================
 
+@task(task_id = "load_data_into_silver")
+def load_data():
+    start_time = datetime.now()
+    load = main()
+    end_time = datetime.now()
+    duration = end_time - start_time
+    log.info(f"Silver load completed in {duration}")
+    
 
 
 with DAG(
@@ -120,6 +128,7 @@ with DAG(
     scrape = run()
     bronze = load_bronze()
     bronze_quality_check = bronze_quality_check()
+    silver_load = load_data()
 
-    scrape >> bronze >> bronze_quality_check
+    scrape >> bronze >> bronze_quality_check >> silver_load
 
