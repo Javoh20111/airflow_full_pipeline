@@ -51,3 +51,34 @@ LIMIT 5;
 "4mkQk","","https://www.olx.uz/d/obyavlenie/srochno-svoya-gorit-3-kom-63900-ID4mkQk.html","olx","03/05/2026" 
 */
 
+
+SELECT 
+    listing_id,
+    seller_type,
+    housing_type,
+    region,
+    district,
+    rooms,
+    living_area_m2,
+    kitchen_area_m2,
+    total_area_m2,
+    floor,
+    total_floors,
+    building_type,
+    layout,
+    build_year,
+    ceiling_height,
+    bathroom,
+    furnished,
+    renovation,
+    commission,
+    amenities,
+    nearby,
+    negotiable,
+    price,
+    currency,
+    published_date,
+    date_scraped,
+    url,
+        ROW_NUMBER() OVER(PARTITION BY listing_id ORDER BY listing_id) as check_dublicates
+FROM bronze.airflow_apartments_tb

@@ -47,6 +47,7 @@ def price_cleaner(df_cleaned):
     df_cleaned.loc[df_cleaned['currency'] == "UZS", 'price_usd'] = (
         df_cleaned.loc[df_cleaned['currency'] == "UZS", 'price_usd'] / exchange_rate
     ).round(1)
+    df_cleaned = df_cleaned[df_cleaned['price_usd'] > 0].copy()
 
     log.info(f"Dropped {before - after} rows with missing price")
     return df_cleaned
