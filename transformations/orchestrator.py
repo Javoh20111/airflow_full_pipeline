@@ -20,11 +20,6 @@ engine = create_engine(
     "postgresql+psycopg://postgres:8228@localhost:5432/airflow_apartments_db"
 )
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
-
 
 def extract():
     log.info("Extracting data from Bronze")
@@ -114,8 +109,8 @@ def load_to_silver(df):
 
 def main():
     df = extract()
-    
     df = transfrom(df)
     load_to_silver(df)
+
 if __name__ == "__main__":
     main()

@@ -107,6 +107,8 @@ def bronze_quality_check():
 ## ===============================================================================
 ##                       TRANSFORM
 ## ===============================================================================
+# Note: Orchestrator is already created and stored in "../transformations/orchestrator.py"
+# Note: Cleaning functions are already created and stored in "../transformations/transformation.py"
 
 @task(task_id = "load_data_into_silver")
 def load_data():
@@ -115,7 +117,57 @@ def load_data():
     end_time = datetime.now()
     duration = end_time - start_time
     log.info(f"Silver load completed in {duration}")
-    
+
+
+## ===============================================================================
+##                       Quality check: Transformation process
+## ===============================================================================
+
+@task(task_id = "check_transform_process")
+def check_transform_process():
+    log.info("Validating transformation process")
+
+    with engine.begin() as conn:
+        conn.execute(text("CALL silver.check_range();"))
+    log.info("Transformation quality check passed")
+
+
+## Note: Tables created and stored in "../scripts/gold/ddl_gold.sql"
+## ===============================================================================
+##                       Load cleaned data into gold table
+## ===============================================================================
+@task(task_id = "load_data_into_gold")
+def load_data_into_gold():
+    log.info("Loading data into gold tables")
+    with engine.begin() as conn:
+        conn.execute(text("""call gold.load_gold();"""))
+    log.info("Data successfully loadded!")
+
+
+
+## ===============================================================================
+##                       Quality check: Gold layer
+## ===============================================================================
+
+@task(task_id = "check_gold_layer_quality")
+def check_gold_layer_quality():
+    log.info("Checking gold layer quality")
+
+    with engine.begin() as conn:
+        raw_conn = conn.connection.driver_connection
+
+        def log_notice(diag):
+            log.info(f"[Postgres] {diag.message_primary}")
+
+        raw_conn.add_notice_handler(log_notice)
+
+        conn.execute(text("""
+            CALL gold.check_gold();
+            CALL gold.check_ratio();
+        """))
+    log.info("Gold quality checks passed!")
+
+
 
 
 with DAG(
@@ -129,6 +181,11 @@ with DAG(
     bronze = load_bronze()
     bronze_quality_check = bronze_quality_check()
     silver_load = load_data()
+    transform_check_task = check_transform_process()
+    gold_load_task = load_data_into_gold()
+    check_gold = check_transform_process()
 
-    scrape >> bronze >> bronze_quality_check >> silver_load
+    scrape >> bronze >> bronze_quality_check >> silver_load >> transform_check_task 
+    silver_load >> gold_load_task >> check_gold
+
 
