@@ -6,7 +6,7 @@ from sqlalchemy import create_engine, text
 from pathlib import Path
 from airflow import DAG
 from airflow.decorators import task
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Dynamically add the project root to sys.path to allow importing local project modules in Airflow
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -24,8 +24,8 @@ from transformations.orchestrator import main
 ## ===============================================================================
 ##                       Scrape data
 ## ===============================================================================
-@task(task_id="scrape_data")
-def run(max_pages=MAX_PAGES, max_listings=10):
+@task(task_id="scrape_data", retries = 3, retry_delay=timedelta(minutes=2), retry_exponential_backoff = True,max_retry_delay=timedelta(minutes=15))
+def run(max_pages=MAX_PAGES, max_listings=None):
 
     start_time = datetime.now()
 
